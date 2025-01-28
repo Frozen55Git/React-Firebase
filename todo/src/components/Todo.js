@@ -1,6 +1,28 @@
-import React from 'react';
+import React, { useState } from 'react';
+import EditTodo from './EditTodo';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../services/firebase.config';
 
 const Todo = () => {
+    const collectionRef = collection(db, 'todo');
+
+    const [createTodo, setCreateTodo] = useState("");
+
+    const submitTodo = async (e) => {
+        e.preventDefault();
+
+        try {
+            await addDoc(collectionRef, {
+                todo: createTodo, 
+                isChecked: false, 
+                timeStamp: serverTimestamp()
+            })
+            window.location.reload();
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
     return (
         <>
             <div className='container'>
@@ -54,7 +76,7 @@ const Todo = () => {
                 aria-hidden='true'
             >
                 <div className='modal-dialog'>
-                    <form className='d-flex'>
+                    <form className='d-flex' onSubmit={submitTodo}>
                         <div className='modal-content'>
                             <div className='modal-header'>
                                 <h5
@@ -75,6 +97,7 @@ const Todo = () => {
                                 <input 
                                     type='text' 
                                     className='form-control' placeholder='Add a Todo' 
+                                    onChange={(e) => setCreateTodo(e.target.value)}
                                 />
                             </div>
                             <div className='modal-footer'>
