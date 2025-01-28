@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import EditTodo from './EditTodo';
-import { collection, addDoc, serverTimestamp, getDocs, doc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, doc, deleteDoc, runTransaction } from 'firebase/firestore';
 import { db } from '../services/firebase.config';
 
 const Todo = () => {
@@ -8,12 +8,14 @@ const Todo = () => {
 
     const [createTodo, setCreateTodo] = useState("");
     const [todos, setTodo] = useState([]);
+    const [checked, setChecked] = useState([]);
 
     useEffect(() => {
         const getTodo = async () => {
             await getDocs(collectionRef).then((todo) => {
                 let todoData = todo.docs.map((doc) => ({ ...doc.data(), id: doc.id }))
                 setTodo(todoData)
+                setChecked(todoData)
             }).catch((err) => {
                 console.log(err);
             })
@@ -26,8 +28,8 @@ const Todo = () => {
 
         try {
             await addDoc(collectionRef, {
-                todo: createTodo, 
-                isChecked: false, 
+                todo: createTodo,
+                isChecked: false,
                 timeStamp: serverTimestamp()
             })
             window.location.reload();
@@ -47,6 +49,34 @@ const Todo = () => {
         }
     }
 
+    const checkHandler = async (event, todo) => {
+        setChecked(state => {
+            const indexToUpdate = state.findIndex(checkBox => checkBox.id.toString() === event.target.name);
+            let newState = state.slice()
+            newState.splice(indexToUpdate, 1, {
+                ...state[indexToUpdate],
+                isChecked: !state[indexToUpdate].isChecked
+            })
+            setTodo(newState)
+            return newState
+        })
+
+        try {
+            const docRef = doc(db, "todo", event.target.name);
+            await runTransaction(db, async (transaction) => {
+                const todoDoc = await transaction.get(docRef);
+                if (!todoDoc.exists()) {
+                    throw "Document does not exist!";
+                }
+                const newValue = !todoDoc.data().isChecked;
+                transaction.update(docRef, { isChecked: newValue });
+            });
+            console.log("Transaction successfully committed!");
+        } catch (error) {
+            console.log("Transaction failed: ", error);
+        }
+    }
+
     return (
         <>
             <div className='container'>
@@ -54,7 +84,7 @@ const Todo = () => {
                     <div className='col-md-12'>
                         <div className='card card-white'>
                             <div className='card-body'>
-                                <button 
+                                <button
                                     data-bs-toggle='modal'
                                     data-bs-target='#addModal'
                                     type='button'
@@ -66,23 +96,28 @@ const Todo = () => {
                         </div>
                     </div>
                     {
-                        todos.map(({ todo, id }) => 
+                        todos.map(({ todo, id, isChecked }) =>
                             <div className='todo-list' key={id}>
                                 <div className='todo-item'>
                                     <hr />
-                                    <span>
+                                    <span className={`${isChecked === true ? 'done' : ''}`}>
                                         <div className='checker'>
                                             <span className=''>
-                                                <input type='checkbox' />
+                                                <input
+                                                    type='checkbox'
+                                                    defaultChecked={isChecked}
+                                                    name={id}
+                                                    onChange={(event) => checkHandler(event, todo)}
+                                                />
                                             </span>
                                         </div>
-                                        &nbsp; { todo }<br />
+                                        &nbsp; {todo}<br />
                                         <i>1/28/2025</i>
                                     </span>
                                     <span className='float-end mx-3'>
                                         <EditTodo todo={todo} id={id} />
                                     </span>
-                                    <button 
+                                    <button
                                         type='button'
                                         className='btn btn-danger float-end'
                                         onClick={() => deleteTodo(id)}
@@ -97,7 +132,7 @@ const Todo = () => {
             </div>
 
             {/* modal */}
-            <div 
+            <div
                 className='modal fade'
                 id="addModal"
                 tabIndex='-1'
@@ -114,7 +149,7 @@ const Todo = () => {
                                 >
                                     Add Todo
                                 </h5>
-                                <button 
+                                <button
                                     type='button'
                                     className='btn-close'
                                     data-bs-dismiss='modal'
@@ -123,14 +158,14 @@ const Todo = () => {
                                 </button>
                             </div>
                             <div className='modal-body'>
-                                <input 
-                                    type='text' 
-                                    className='form-control' placeholder='Add a Todo' 
+                                <input
+                                    type='text'
+                                    className='form-control' placeholder='Add a Todo'
                                     onChange={(e) => setCreateTodo(e.target.value)}
                                 />
                             </div>
                             <div className='modal-footer'>
-                                <button 
+                                <button
                                     className='btn btn-secondary' data-bs-dismiss='modal'
                                 >
                                     Close
