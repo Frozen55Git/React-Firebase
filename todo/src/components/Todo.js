@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import EditTodo from './EditTodo';
-import { collection, addDoc, serverTimestamp, getDocs, doc, deleteDoc, runTransaction } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, doc, deleteDoc, runTransaction, orderBy, query } from 'firebase/firestore';
 import { db } from '../services/firebase.config';
 
 const Todo = () => {
@@ -12,7 +12,8 @@ const Todo = () => {
 
     useEffect(() => {
         const getTodo = async () => {
-            await getDocs(collectionRef).then((todo) => {
+            const q = query(collectionRef, orderBy('timeStamp'))
+            await getDocs(q).then((todo) => {
                 let todoData = todo.docs.map((doc) => ({ ...doc.data(), id: doc.id }))
                 setTodo(todoData)
                 setChecked(todoData)
@@ -96,7 +97,7 @@ const Todo = () => {
                         </div>
                     </div>
                     {
-                        todos.map(({ todo, id, isChecked }) =>
+                        todos.map(({ todo, id, isChecked, timeStamp }) =>
                             <div className='todo-list' key={id}>
                                 <div className='todo-item'>
                                     <hr />
@@ -112,7 +113,7 @@ const Todo = () => {
                                             </span>
                                         </div>
                                         &nbsp; {todo}<br />
-                                        <i>1/28/2025</i>
+                                        <i>{new Date(timeStamp.seconds * 1000).toLocaleString()}</i>
                                     </span>
                                     <span className='float-end mx-3'>
                                         <EditTodo todo={todo} id={id} />
