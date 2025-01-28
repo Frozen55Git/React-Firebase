@@ -1,19 +1,39 @@
-import React from 'react'
+import React, { useState } from 'react'
+import { db } from '../services/firebase.config';
+import { doc, updateDoc } from 'firebase/firestore';
 
-const EditTodo = () => {
+const EditTodo = ({
+    todo, 
+    id
+}) => {
+    const [ todos, setTodos ] = useState([todo])
+
+    const updateTodo = async (e) => {
+        e.preventDefault()
+        try {
+            const todoDocument = doc(db, "todo", id);
+            await updateDoc(todoDocument, {
+                todo: todos
+            });
+            window.location.reload();
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
     return (
         <>
             <button
                 type="button"
                 className="btn btn-primary"
                 data-bs-toggle="modal"
-                data-bs-target="#exampleModal"
+                data-bs-target={`#id${id}`}
             >
                 Edit Todo
             </button>
             <div
                 className="modal fade"
-                id="exampleModal"
+                id={`id${id}`}
                 tabIndex="-1"
                 aria-labelledby="editLabel"
                 aria-hidden="true"
@@ -40,6 +60,8 @@ const EditTodo = () => {
                                 <input
                                     type="text"
                                     className="form-control"
+                                    defaultValue={todo}
+                                    onChange={(e) => setTodos(e.target.value)}
                                 />
                             </form>
                         </div>
@@ -54,6 +76,7 @@ const EditTodo = () => {
                             <button
                                 type="button"
                                 className="btn btn-primary"
+                                onClick={(e) => updateTodo(e)}
                             >
                                 Update Todo
                             </button>

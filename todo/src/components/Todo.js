@@ -1,12 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import EditTodo from './EditTodo';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../services/firebase.config';
 
 const Todo = () => {
     const collectionRef = collection(db, 'todo');
 
     const [createTodo, setCreateTodo] = useState("");
+    const [todos, setTodo] = useState([]);
+
+    useEffect(() => {
+        const getTodo = async () => {
+            await getDocs(collectionRef).then((todo) => {
+                let todoData = todo.docs.map((doc) => ({ ...doc.data(), id: doc.id }))
+                setTodo(todoData)
+            }).catch((err) => {
+                console.log(err);
+            })
+        }
+        getTodo()
+    }, [])
 
     const submitTodo = async (e) => {
         e.preventDefault();
@@ -17,6 +30,17 @@ const Todo = () => {
                 isChecked: false, 
                 timeStamp: serverTimestamp()
             })
+            window.location.reload();
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
+    const deleteTodo = async (id) => {
+        try {
+            window.confirm('Are you sure you wanna delete this Todo?')
+            const documentRef = doc(db, "todo", id);
+            await deleteDoc(documentRef)
             window.location.reload();
         } catch (err) {
             console.log(err);
@@ -41,29 +65,34 @@ const Todo = () => {
                             </div>
                         </div>
                     </div>
-                    <div className='todo-list'>
-                        <div className='todo-item'>
-                            <hr />
-                            <span>
-                                <div className='checker'>
-                                    <span className=''>
-                                        <input type='checkbox' />
+                    {
+                        todos.map(({ todo, id }) => 
+                            <div className='todo-list' key={id}>
+                                <div className='todo-item'>
+                                    <hr />
+                                    <span>
+                                        <div className='checker'>
+                                            <span className=''>
+                                                <input type='checkbox' />
+                                            </span>
+                                        </div>
+                                        &nbsp; { todo }<br />
+                                        <i>1/28/2025</i>
                                     </span>
+                                    <span className='float-end mx-3'>
+                                        <EditTodo todo={todo} id={id} />
+                                    </span>
+                                    <button 
+                                        type='button'
+                                        className='btn btn-danger float-end'
+                                        onClick={() => deleteTodo(id)}
+                                    >
+                                        Delete
+                                    </button>
                                 </div>
-                                &nbsp; Go hard or Go Home<br />
-                                <i>1/28/2025</i>
-                            </span>
-                            <span className='float-end mx-3'>
-                                <EditTodo />
-                            </span>
-                            <button 
-                                type='button'
-                                className='btn btn-danger float-end'
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    </div>
+                            </div>
+                        )
+                    }
                 </div>
             </div>
 
